@@ -1,0 +1,19 @@
+name: Publish release assets
+
+# Optional manual publish; normal path is AutoBet tag CI with RELEASES_REPO_TOKEN.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag (e.g. v0.1.1)
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  placeholder:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Releases are published from private AutoBet CI."

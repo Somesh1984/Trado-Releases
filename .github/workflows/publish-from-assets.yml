@@ -1,0 +1,58 @@
+name: Create GitHub Release from published assets
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "published/**"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Find new release tag folder
+        id: tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG=""
+          while IFS= read -r path; do
+            case "$path" in
+              published/v*/*)
+                candidate="${path#published/}"
+                candidate="${candidate%%/*}"
+                TAG="$candidate"
+                ;;
+            esac
+          done < <(git diff --name-only HEAD~1 HEAD 2>/dev/null || git diff --name-only --cached)
+          if [[ -z "$TAG" ]]; then
+            for dir in published/v*; do
+              [[ -d "$dir" ]] || continue
+              TAG="${dir#published/}"
+              break
+            done
+          fi
+          if [[ -z "$TAG" ]]; then
+            echo "No published/v* folder found" >&2
+            exit 1
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "dir=published/${TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: Trado ${{ steps.tag.outputs.tag }}
+          target_commitish: main
+          files: |
+            ${{ steps.tag.outputs.dir }}/Trado.exe
+            ${{ steps.tag.outputs.dir }}/version.json

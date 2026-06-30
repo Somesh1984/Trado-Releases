@@ -18,21 +18,15 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Find new release tag folder
+      - name: Find release tag folder
         id: tag
         shell: bash
         run: |
           set -euo pipefail
           TAG=""
-          while IFS= read -r path; do
-            case "$path" in
-              published/v*/*)
-                candidate="${path#published/}"
-                candidate="${candidate%%/*}"
-                TAG="$candidate"
-                ;;
-            esac
-          done < <(git diff --name-only HEAD~1 HEAD 2>/dev/null || git diff --name-only --cached)
+          if git log -1 --pretty=%s | grep -q '^Publish v'; then
+            TAG=$(git log -1 --pretty=%s | sed 's/^Publish //')
+          fi
           if [[ -z "$TAG" ]]; then
             for dir in published/v*; do
               [[ -d "$dir" ]] || continue
@@ -40,8 +34,8 @@ jobs:
               break
             done
           fi
-          if [[ -z "$TAG" ]]; then
-            echo "No published/v* folder found" >&2
+          if [[ -z "$TAG" || ! -d "published/${TAG}" ]]; then
+            echo "::error::Could not resolve published/v* folder" >&2
             exit 1
           fi
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
